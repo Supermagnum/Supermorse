@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supermorse - Morse Code Training</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Supermorse</h1>
+            <p>Progressive Morse Code Training</p>
+        </header>
+
+        <main>
+            <section id="connection-status">
+                <h2>Hardware Connection</h2>
+                <div class="status-indicator">
+                    <span id="connection-indicator" class="disconnected">Disconnected</span>
+                    <button id="connect-button">Connect Morse Key</button>
+                </div>
+            </section>
+
+            <section id="settings">
+                <h2>Settings</h2>
+                <div class="setting-group">
+                    <label for="country-select">Country:</label>
+                    <select id="country-select">
+                        <option value="international">International</option>
+                        <option value="norway">Norway</option>
+                        <option value="sweden">Sweden</option>
+                        <option value="germany">Germany</option>
+                        <option value="france">France</option>
+                        <option value="spain">Spain</option>
+                        <option value="denmark">Denmark</option>
+                        <option value="finland">Finland</option>
+                        <option value="iceland">Iceland</option>
+                        <option value="faroe">Faroe Islands</option>
+                        <option value="italy">Italy</option>
+                        <option value="poland">Poland</option>
+                        <option value="czech">Czech Republic</option>
+                    </select>
+                </div>
+                <div class="setting-group">
+                    <label for="speed-select">Character Speed:</label>
+                    <select id="speed-select">
+                        <option value="15">15 WPM</option>
+                        <option value="20" disabled>20 WPM (Unlock at 100% mastery)</option>
+                    </select>
+                </div>
+                <div class="setting-group">
+                    <label for="farnsworth-toggle">Farnsworth Spacing:</label>
+                    <input type="checkbox" id="farnsworth-toggle" checked>
+                </div>
+                <div class="setting-group">
+                    <label for="key-type-select">Key Type:</label>
+                    <select id="key-type-select">
+                        <option value="straight">Straight Key</option>
+                        <option value="paddle-single">Paddle (Single Lever)</option>
+                        <option value="paddle-iambic-a">Paddle (Iambic Mode A)</option>
+                        <option value="paddle-iambic-b">Paddle (Iambic Mode B)</option>
+                    </select>
+                </div>
+            </section>
+
+            <section id="current-lesson">
+                <h2>Current Lesson</h2>
+                <div id="character-display">
+                    <div id="current-character"></div>
+                    <div id="current-morse"></div>
+                </div>
+                <div id="character-set">
+                    <h3>Current Character Set:</h3>
+                    <div id="known-characters"></div>
+                </div>
+                <div class="button-group">
+                    <button id="start-lesson">Start Lesson</button>
+                    <button id="play-character" disabled>Play Current Character</button>
+                </div>
+            </section>
+
+            <section id="practice-area">
+                <h2>Practice</h2>
+                <div id="expected-sequence"></div>
+                <div id="user-input"></div>
+                <div class="accuracy">
+                    <span>Accuracy: </span>
+                    <span id="accuracy-value">0%</span>
+                </div>
+                <button id="start-practice" disabled>Start Practice</button>
+            </section>
+
+            <section id="progress">
+                <h2>Progress</h2>
+                <div id="progress-bars"></div>
+            </section>
+
+            <section id="session-info">
+                <h2>Session Information</h2>
+                <div class="timer">
+                    <span>Session Time: </span>
+                    <span id="session-timer">00:00:00</span>
+                </div>
+                <div id="break-timer" class="hidden">
+                    <span>Next session recommended in: </span>
+                    <span id="cooldown-timer">01:00:00</span>
+                </div>
+                <div id="session-message"></div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Supermorse - Learn Morse Code with Progressive Training</p>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/alphabets.js"></script>
+    <script src="js/morseAudio.js"></script>
+    <script src="js/serialReader.js"></script>
+    <script src="js/inputChecker.js"></script>
+    <script src="js/lessonManager.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
