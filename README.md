@@ -156,6 +156,11 @@ Mode B is preferred by some experienced operators who have developed their timin
    - You may see "Morse Decoder Ready" in the Serial Monitor (Tools > Serial Monitor)
    - The Arduino is now ready to be used with the Supermorse application
 
+Note:
+CW trainer for morserino runs on opera, chrome and edge without that web server so I think it's false information.
+Opening the index.html file in one of those browsers might be enough.
+In case it doesn't:
+
 ### Setting Up the Web Application
 
 1. Host the web application files on a web server or run locally
@@ -269,3 +274,26 @@ This project is open source and available under the MIT License.
 
 - Special thanks to the Morse code community for preserving this historic communication method
 - Inspired by modern spaced-repetition learning techniques
+
+
+## To do in the future:
+Add a user account so the same browser and machine can be used by multiple users.
+
+##Tone control
+Controls the tone of the browser output.
+
+#Headphones output.
+
+##Realistic mode 
+Adds signal fading,static,QRM and white noise to imitate more "realistic conditions".
+Possible based on Solar weather data? A communication protocol designed to implement distance,location ( big square maidenhead) and VOACAP data?
+
+## Compatibility with LCWO.net
+Useful to compare your results with others.
+
+##Compatibility with low latency voice chats like Murmur,
+A existing murmur/mumble server already exists: http://internetcw.weebly.com/ 
+A existing murmur/mumble server already exists: http://internetcw.weebly.com/ 
+
+##Discord compatibility.
+Discord is not low latency, full QSK might not be possible.
