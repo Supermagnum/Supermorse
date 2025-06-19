@@ -43,7 +43,7 @@ Supermorse implements this method while adding modern features like regional cha
 
 ## Requirements
 
-- Web browser with Web Serial API support (Chrome or Edge recommended)
+- Web browser with Web Serial API support (Chrome,Opera or Edge recommended)
 - Arduino board (Uno, Nano, or similar)
 - Morse key (straight key or paddle)
 - USB cable to connect Arduino to computer
