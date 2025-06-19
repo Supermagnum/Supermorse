@@ -4,6 +4,10 @@ Progressive Morse Code Training with Arduino Key Integration
 
 ![Supermorse Screenshot](https://github.com/Supermagnum/Supermorse/blob/main/screenshot.png))
 
+## The programming:
+I have a neurological condition that makes it impossible for me to understand programming.
+I had to use a AI.
+
 ## Overview
 
 Supermorse is a web-based Morse code training application designed to teach Morse code progressively using sound output and a real physical Morse key connected through an Arduino. The application implements the Koch method, a scientifically-backed learning approach that has proven to be one of the most effective ways to learn Morse code.
@@ -279,21 +283,21 @@ This project is open source and available under the MIT License.
 ## To do in the future:
 Add a user account so the same browser and machine can be used by multiple users.
 
-##Tone control
+## Tone control
 Controls the tone of the browser output.
 
-#Headphones output.
+# Headphones output.
 
-##Realistic mode 
+## Realistic mode 
 Adds signal fading,static,QRM and white noise to imitate more "realistic conditions".
 Possible based on Solar weather data? A communication protocol designed to implement distance,location ( big square maidenhead) and VOACAP data?
 
 ## Compatibility with LCWO.net
 Useful to compare your results with others.
 
-##Compatibility with low latency voice chats like Murmur,
+## Compatibility with low latency voice chats like Murmur,
 A existing murmur/mumble server already exists: http://internetcw.weebly.com/ 
 A existing murmur/mumble server already exists: http://internetcw.weebly.com/ 
 
-##Discord compatibility.
+## Discord compatibility.
 Discord is not low latency, full QSK might not be possible.
