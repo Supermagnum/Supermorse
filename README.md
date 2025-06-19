@@ -2,7 +2,7 @@
 
 Progressive Morse Code Training with Arduino Key Integration
 
-![Supermorse Screenshot](http://0.0.0.0:8000/http___0_0_0_0_8000_-1750369349324.jpeg)
+![Supermorse Screenshot](https://github.com/Supermagnum/Supermorse/blob/main/screenshot.png))
 
 ## Overview
 
