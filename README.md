@@ -251,6 +251,8 @@ The firmware supports:
 
 - The Web Serial API is only supported in Chrome, Edge, and some Chromium-based browsers
 - Firefox and Safari do not currently support the Web Serial API
+- On Linux, the Web Serial API works when opening HTML files directly (file:// protocol)
+- On Windows and macOS, the Web Serial API typically requires a secure context (HTTPS) or localhost
 
 ## Technical Details
 
