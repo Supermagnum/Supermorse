@@ -2,11 +2,14 @@
 
 Progressive Morse Code Training with Arduino Key Integration
 
-![Supermorse Screenshot](https://github.com/Supermagnum/Supermorse/blob/main/screenshot.png))
+![Supermorse Screenshot](https://github.com/Supermagnum/Supermorse/blob/main/screenshot.png)
 
 ## The programming:
 I have a neurological condition that makes it impossible for me to understand programming.
-I had to use a AI.
+I had to use a AI,Claude.
+
+## It's untested and needs testing and debugging
+
 
 ## Overview
 
