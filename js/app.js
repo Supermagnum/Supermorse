@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
         speedSelect: document.getElementById('speed-select'),
         farnsworthToggle: document.getElementById('farnsworth-toggle'),
         keyTypeSelect: document.getElementById('key-type-select'),
+        saveProgressButton: document.getElementById('save-progress-button'),
+        deleteProgressButton: document.getElementById('delete-progress-button'),
         
         // Current lesson
         currentCharacter: document.getElementById('current-character'),
@@ -87,6 +89,8 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.speedSelect.addEventListener('change', handleSettingsChange);
         elements.farnsworthToggle.addEventListener('change', handleSettingsChange);
         elements.keyTypeSelect.addEventListener('change', handleKeyTypeChange);
+        elements.saveProgressButton.addEventListener('click', handleSaveProgress);
+        elements.deleteProgressButton.addEventListener('click', handleDeleteProgress);
         
         // Lesson controls
         elements.startLessonButton.addEventListener('click', handleStartLesson);
@@ -461,6 +465,43 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Store the setting for when we connect
         appState.keyType = keyType;
+    }
+    
+    /**
+     * Handle save progress button click
+     */
+    function handleSaveProgress() {
+        const success = LESSON_MANAGER.saveProgress();
+        
+        if (success) {
+            elements.sessionMessage.textContent = 'Progress saved successfully!';
+            
+            // Clear message after 3 seconds
+            setTimeout(() => {
+                elements.sessionMessage.textContent = '';
+            }, 3000);
+        } else {
+            elements.sessionMessage.textContent = 'Error saving progress. Please try again.';
+        }
+    }
+    
+    /**
+     * Handle delete progress button click
+     */
+    function handleDeleteProgress() {
+        // Ask for confirmation before deleting
+        if (confirm('Are you sure you want to delete all saved progress? This cannot be undone.')) {
+            const success = LESSON_MANAGER.deleteProgress();
+            
+            if (success) {
+                elements.sessionMessage.textContent = 'Progress deleted. Starting fresh!';
+                
+                // Update UI to reflect reset state
+                updateUI();
+            } else {
+                elements.sessionMessage.textContent = 'Error deleting progress. Please try again.';
+            }
+        }
     }
     
     /**

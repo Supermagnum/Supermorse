@@ -1,6 +1,7 @@
 /**
  * lessonManager.js
  * Manages the learning progression and session timing
+ * Includes functionality to save and load progress
  */
 
 const LESSON_MANAGER = (function() {
@@ -11,6 +12,12 @@ const LESSON_MANAGER = (function() {
         PROSIGNS: 3,
         SPECIAL: 4,
         CONFUSION: 5
+    };
+    
+    // Local storage keys
+    const STORAGE_KEYS = {
+        LEARNING_STATE: 'supermorse_learning_state',
+        SETTINGS: 'supermorse_settings'
     };
     
     // Settings
@@ -51,22 +58,125 @@ const LESSON_MANAGER = (function() {
         if (options.farnsworthSpacing !== undefined) settings.farnsworthSpacing = options.farnsworthSpacing;
         if (options.masteryThreshold) settings.masteryThreshold = options.masteryThreshold;
         
-        // Reset learning state
-        resetLearningState();
+        // Try to load saved state and settings
+        const loadedSuccessfully = loadProgress();
         
-        // Set up initial characters (first two from the learning order)
-        const initialChars = ALPHABETS.getLearningOrder(settings.country, STAGES.CORE).slice(0, 2);
-        initialChars.forEach(char => {
-            learningState.knownCharacters.push(char);
-            learningState.characterProgress[char] = 0;
-        });
-        
-        // Set current character to the first one
-        learningState.currentCharacter = initialChars[0];
+        // If no saved state or loading failed, set up initial state
+        if (!loadedSuccessfully) {
+            // Reset learning state
+            resetLearningState();
+            
+            // Set up initial characters (first two from the learning order)
+            const initialChars = ALPHABETS.getLearningOrder(settings.country, STAGES.CORE).slice(0, 2);
+            initialChars.forEach(char => {
+                learningState.knownCharacters.push(char);
+                learningState.characterProgress[char] = 0;
+            });
+            
+            // Set current character to the first one
+            learningState.currentCharacter = initialChars[0];
+        }
         
         // Notify listeners
         if (onStateUpdated) {
             onStateUpdated(getLearningState());
+        }
+    }
+    
+    /**
+     * Save the current progress to localStorage
+     * @returns {boolean} Whether the save was successful
+     */
+    function saveProgress() {
+        try {
+            // Save learning state (excluding session timers)
+            const stateToSave = {
+                stage: learningState.stage,
+                knownCharacters: learningState.knownCharacters,
+                currentCharacter: learningState.currentCharacter,
+                characterProgress: learningState.characterProgress
+            };
+            
+            localStorage.setItem(STORAGE_KEYS.LEARNING_STATE, JSON.stringify(stateToSave));
+            
+            // Save settings
+            localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+            
+            return true;
+        } catch (error) {
+            console.error('Error saving progress:', error);
+            return false;
+        }
+    }
+    
+    /**
+     * Load saved progress from localStorage
+     * @returns {boolean} Whether the load was successful
+     */
+    function loadProgress() {
+        try {
+            // Load learning state
+            const savedState = localStorage.getItem(STORAGE_KEYS.LEARNING_STATE);
+            const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+            
+            if (!savedState || !savedSettings) {
+                return false;
+            }
+            
+            // Parse saved state
+            const parsedState = JSON.parse(savedState);
+            const parsedSettings = JSON.parse(savedSettings);
+            
+            // Apply saved settings
+            Object.assign(settings, parsedSettings);
+            
+            // Reset learning state first
+            resetLearningState();
+            
+            // Apply saved learning state
+            learningState.stage = parsedState.stage;
+            learningState.knownCharacters = parsedState.knownCharacters;
+            learningState.currentCharacter = parsedState.currentCharacter;
+            learningState.characterProgress = parsedState.characterProgress;
+            
+            return true;
+        } catch (error) {
+            console.error('Error loading progress:', error);
+            return false;
+        }
+    }
+    
+    /**
+     * Delete saved progress from localStorage
+     * @returns {boolean} Whether the deletion was successful
+     */
+    function deleteProgress() {
+        try {
+            localStorage.removeItem(STORAGE_KEYS.LEARNING_STATE);
+            localStorage.removeItem(STORAGE_KEYS.SETTINGS);
+            
+            // Reset to initial state
+            resetLearningState();
+            
+            // Set up initial characters (first two from the learning order)
+            const initialChars = ALPHABETS.getLearningOrder(settings.country, STAGES.CORE).slice(0, 2);
+            initialChars.forEach(char => {
+                learningState.knownCharacters.push(char);
+                learningState.characterProgress[char] = 0;
+            });
+            
+            // Set current character to the first one
+            learningState.currentCharacter = initialChars[0];
+            
+            // Notify listeners
+            if (onStateUpdated) {
+                onStateUpdated(getLearningState());
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('Error deleting progress:', error);
+            return false;
         }
     }
     
@@ -148,6 +258,9 @@ const LESSON_MANAGER = (function() {
         learningState.sessionEndTime = Date.now();
         learningState.breakEndTime = learningState.sessionEndTime + settings.breakDuration;
         
+        // Save progress after session ends
+        saveProgress();
+        
         // Notify listeners
         if (onStateUpdated) {
             onStateUpdated(getLearningState());
@@ -192,6 +305,9 @@ const LESSON_MANAGER = (function() {
         
         // Check if we should introduce a new character
         checkForProgression();
+        
+        // Save progress after update
+        saveProgress();
         
         // Notify listeners
         if (onStateUpdated) {
@@ -348,6 +464,9 @@ const LESSON_MANAGER = (function() {
             farnsworthSpacing: settings.farnsworthSpacing
         });
         
+        // Save the updated settings
+        saveProgress();
+        
         // Notify listeners
         if (onStateUpdated) {
             onStateUpdated(getLearningState());
@@ -438,6 +557,9 @@ const LESSON_MANAGER = (function() {
         getSessionTimeRemaining,
         getBreakTimeRemaining,
         isReadyFor20WPM,
+        saveProgress,
+        loadProgress,
+        deleteProgress,
         STAGES
     };
 })();

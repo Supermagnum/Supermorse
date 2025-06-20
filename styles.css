@@ -119,6 +119,39 @@ section {
     font-weight: bold;
 }
 
+/* Progress Controls */
+.progress-controls {
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.progress-controls h3 {
+    margin-bottom: 15px;
+    width: 100%;
+}
+
+.progress-controls .button-group {
+    margin-bottom: 10px;
+}
+
+.help-text {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+    margin-top: 8px;
+    font-style: italic;
+}
+
+button.danger {
+    background-color: var(--accent-color);
+}
+
+button.danger:hover {
+    background-color: #c0392b;
+}
+
 /* Current Lesson */
 #character-display {
     display: flex;
