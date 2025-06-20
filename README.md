@@ -39,7 +39,7 @@ Supermorse implements this method while adding modern features like regional cha
 
 ## Requirements
 
-- Web browser with Web Serial API support (Chrome or Edge recommended)
+- Web browser with Web Serial API support (Chrome, Opera or Edge recommended)
 - Arduino board (Uno, Nano, or similar)
 - Morse key (straight key or paddle)
 - USB cable to connect Arduino to computer
@@ -156,7 +156,9 @@ Mode B is preferred by some experienced operators who have developed their timin
    - You may see "Morse Decoder Ready" in the Serial Monitor (Tools > Serial Monitor)
    - The Arduino is now ready to be used with the Supermorse application
 
-### Setting Up the Web Application
+### Setting Up the Web Application. 
+
+This is only needed if Opera,Edge or chrome doesn't work.
 
 1. Host the web application files on a web server or run locally
    - For local testing, you can use Python's built-in HTTP server:
@@ -249,7 +251,7 @@ The firmware supports:
 
 ### Browser Compatibility
 
-- The Web Serial API is only supported in Chrome, Edge, and some Chromium-based browsers
+- The Web Serial API is only supported in Chrome,Opera Edge, and some Chromium-based browsers
 - Firefox and Safari do not currently support the Web Serial API
 - On Linux, the Web Serial API works when opening HTML files directly (file:// protocol)
 - On Windows and macOS, the Web Serial API typically requires a secure context (HTTPS) or localhost
