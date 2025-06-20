@@ -162,9 +162,10 @@ const MORSE_AUDIO = (function() {
      * Play a character as Morse code
      * @param {string} character - The character to play
      * @param {function} onComplete - Callback when playback is complete
+     * @param {string} country - The country code for language-specific Morse (optional)
      */
-    function playCharacter(character, onComplete) {
-        const morseCode = ALPHABETS.charToMorse(character);
+    function playCharacter(character, onComplete, country) {
+        const morseCode = ALPHABETS.charToMorse(character, country);
         if (morseCode) {
             return playMorseSequence(morseCode, onComplete);
         }
@@ -175,13 +176,14 @@ const MORSE_AUDIO = (function() {
      * Play a word as Morse code
      * @param {string} word - The word to play
      * @param {function} onComplete - Callback when playback is complete
+     * @param {string} country - The country code for language-specific Morse (optional)
      */
-    function playWord(word, onComplete) {
+    function playWord(word, onComplete, country) {
         let morseCode = '';
         
         // Convert each character to Morse and add character spaces
         for (let i = 0; i < word.length; i++) {
-            const charMorse = ALPHABETS.charToMorse(word[i]);
+            const charMorse = ALPHABETS.charToMorse(word[i], country);
             if (charMorse) {
                 morseCode += charMorse;
                 if (i < word.length - 1) {
@@ -197,15 +199,16 @@ const MORSE_AUDIO = (function() {
      * Play a sequence of words as Morse code
      * @param {string} text - The text to play (words separated by spaces)
      * @param {function} onComplete - Callback when playback is complete
+     * @param {string} country - The country code for language-specific Morse (optional)
      */
-    function playText(text, onComplete) {
+    function playText(text, onComplete, country) {
         let morseCode = '';
         const words = text.split(' ');
         
         // Convert each word to Morse and add word spaces
         for (let i = 0; i < words.length; i++) {
             for (let j = 0; j < words[i].length; j++) {
-                const charMorse = ALPHABETS.charToMorse(words[i][j]);
+                const charMorse = ALPHABETS.charToMorse(words[i][j], country);
                 if (charMorse) {
                     morseCode += charMorse;
                     if (j < words[i].length - 1) {

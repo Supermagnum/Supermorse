@@ -182,6 +182,65 @@ document.addEventListener('DOMContentLoaded', () => {
         if (LESSON_MANAGER.isReadyFor20WPM()) {
             elements.speedSelect.querySelector('option[value="20"]').disabled = false;
         }
+        
+        // Update UI for special language modes
+        updateLanguageModeUI();
+    }
+    
+    /**
+     * Update UI elements specific to certain language modes
+     */
+    function updateLanguageModeUI() {
+        const country = elements.countrySelect.value;
+        
+        // Handle special display for Chinese Telegraph Code mode
+        if (country === 'chinese-telegraph') {
+            // In a real implementation, we might add a special display area for the Chinese character
+            // and its corresponding 4-digit telegraph code
+            if (!document.getElementById('telegraph-display')) {
+                const telegraphDisplay = document.createElement('div');
+                telegraphDisplay.id = 'telegraph-display';
+                telegraphDisplay.className = 'telegraph-display';
+                telegraphDisplay.innerHTML = `
+                    <h3>Chinese Telegraph Code</h3>
+                    <div class="telegraph-info">
+                        <div>Character: <span id="chinese-char"></span></div>
+                        <div>Code: <span id="telegraph-code"></span></div>
+                    </div>
+                `;
+                elements.currentCharacter.parentNode.appendChild(telegraphDisplay);
+            }
+        } else {
+            // Remove telegraph display if not in Chinese Telegraph mode
+            const telegraphDisplay = document.getElementById('telegraph-display');
+            if (telegraphDisplay) {
+                telegraphDisplay.remove();
+            }
+        }
+        
+        // Handle special display for Japanese Wabun mode
+        if (country === 'japanese-wabun') {
+            // In a real implementation, we might add a special display for Katakana
+            if (!document.getElementById('wabun-display')) {
+                const wabunDisplay = document.createElement('div');
+                wabunDisplay.id = 'wabun-display';
+                wabunDisplay.className = 'wabun-display';
+                wabunDisplay.innerHTML = `
+                    <h3>Wabun Code</h3>
+                    <div class="wabun-info">
+                        <div>Katakana: <span id="katakana-char"></span></div>
+                        <div>Romaji: <span id="romaji-equiv"></span></div>
+                    </div>
+                `;
+                elements.currentCharacter.parentNode.appendChild(wabunDisplay);
+            }
+        } else {
+            // Remove wabun display if not in Japanese Wabun mode
+            const wabunDisplay = document.getElementById('wabun-display');
+            if (wabunDisplay) {
+                wabunDisplay.remove();
+            }
+        }
     }
     
     /**
@@ -206,12 +265,43 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function updateLearningUI() {
         const learningState = LESSON_MANAGER.getLearningState();
+        const country = elements.countrySelect.value;
         
         // Update current character display
         if (learningState.currentCharacter) {
             elements.currentCharacter.textContent = learningState.currentCharacter;
-            elements.currentMorse.textContent = ALPHABETS.charToMorse(learningState.currentCharacter);
+            elements.currentMorse.textContent = ALPHABETS.charToMorse(learningState.currentCharacter, country);
             elements.playCharacterButton.disabled = false;
+            
+            // Special handling for Chinese Telegraph Code
+            if (country === 'chinese-telegraph') {
+                const chineseChar = document.getElementById('chinese-char');
+                const telegraphCode = document.getElementById('telegraph-code');
+                
+                if (chineseChar && telegraphCode) {
+                    const code = ALPHABETS.charToTelegraphCode(learningState.currentCharacter);
+                    chineseChar.textContent = learningState.currentCharacter;
+                    telegraphCode.textContent = code;
+                }
+            }
+            
+            // Special handling for Japanese Wabun Code
+            if (country === 'japanese-wabun') {
+                const katakanaChar = document.getElementById('katakana-char');
+                const romajiEquiv = document.getElementById('romaji-equiv');
+                
+                if (katakanaChar && romajiEquiv) {
+                    // This is a simplified mapping - a real implementation would have a complete mapping
+                    const romajiMap = {
+                        'ア': 'A', 'イ': 'I', 'ウ': 'U', 'エ': 'E', 'オ': 'O',
+                        'カ': 'KA', 'キ': 'KI', 'ク': 'KU', 'ケ': 'KE', 'コ': 'KO'
+                        // ... more mappings would be added in a real implementation
+                    };
+                    
+                    katakanaChar.textContent = learningState.currentCharacter;
+                    romajiEquiv.textContent = romajiMap[learningState.currentCharacter] || '';
+                }
+            }
         } else {
             elements.currentCharacter.textContent = '';
             elements.currentMorse.textContent = '';
@@ -408,22 +498,38 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function playCurrentCharacter() {
         const learningState = LESSON_MANAGER.getLearningState();
+        const country = elements.countrySelect.value;
+        
         if (!learningState.currentCharacter) return;
         
         // Highlight the character
         elements.currentCharacter.classList.add('highlight');
         
-        // Play the character
+        // Special handling for Chinese Telegraph Code
+        if (country === 'chinese-telegraph') {
+            const code = ALPHABETS.charToTelegraphCode(learningState.currentCharacter);
+            if (code) {
+                // Play the 4-digit code as individual digits
+                MORSE_AUDIO.playText(code, () => {
+                    elements.currentCharacter.classList.remove('highlight');
+                });
+                return;
+            }
+        }
+        
+        // Play the character with the current country context
         MORSE_AUDIO.playCharacter(learningState.currentCharacter, () => {
             // Remove highlight when done
             elements.currentCharacter.classList.remove('highlight');
-        });
+        }, country);
     }
     
     /**
      * Handle start practice button click
      */
     function handleStartPractice() {
+        const country = elements.countrySelect.value;
+        
         // Generate a practice sequence
         appState.currentPracticeSequence = LESSON_MANAGER.generatePracticeSequence(5);
         
@@ -434,12 +540,27 @@ document.addEventListener('DOMContentLoaded', () => {
         appState.isInLearnMode = false;
         appState.isInPracticeMode = true;
         
-        // Play the sequence without showing it
-        elements.expectedSequence.textContent = '?????';
-        MORSE_AUDIO.playText(appState.currentPracticeSequence, () => {
-            // Ready for input
-            elements.userInput.innerHTML = '';
-        });
+        // Special handling for Chinese Telegraph Code
+        if (country === 'chinese-telegraph') {
+            // For Chinese Telegraph, we'd play the 4-digit codes for each character
+            const telegraphSequence = appState.currentPracticeSequence.split('').map(char => {
+                return ALPHABETS.charToTelegraphCode(char);
+            }).join(' ');
+            
+            // Play the sequence without showing it
+            elements.expectedSequence.textContent = '?????';
+            MORSE_AUDIO.playText(telegraphSequence, () => {
+                // Ready for input
+                elements.userInput.innerHTML = '';
+            });
+        } else {
+            // Play the sequence without showing it
+            elements.expectedSequence.textContent = '?????';
+            MORSE_AUDIO.playText(appState.currentPracticeSequence, () => {
+                // Ready for input
+                elements.userInput.innerHTML = '';
+            }, country);
+        }
         
         // Update UI
         updateUI();

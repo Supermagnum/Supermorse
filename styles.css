@@ -139,6 +139,52 @@ section {
     letter-spacing: 2px;
 }
 
+/* Special Language Displays */
+.telegraph-display, .wabun-display {
+    margin-top: 20px;
+    padding: 15px;
+    border-radius: 8px;
+    background-color: #f0f8ff; /* Light blue background */
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.telegraph-display h3, .wabun-display h3 {
+    color: var(--secondary-color);
+    margin-bottom: 10px;
+    font-size: 1.2rem;
+}
+
+.telegraph-info, .wabun-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.telegraph-info div, .wabun-info div {
+    padding: 8px;
+    background-color: white;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+#chinese-char, #katakana-char {
+    font-size: 2rem;
+    font-weight: bold;
+    display: inline-block;
+    margin-top: 5px;
+}
+
+#telegraph-code, #romaji-equiv {
+    font-family: monospace;
+    font-size: 1.2rem;
+    display: inline-block;
+    margin-top: 5px;
+    color: var(--primary-color);
+}
+
 #character-set {
     margin: 20px 0;
 }
