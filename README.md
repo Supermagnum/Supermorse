@@ -297,7 +297,7 @@ Useful to compare your results with others.
 
 ## Compatibility with low latency voice chats like Murmur,
 A existing murmur/mumble server already exists: http://internetcw.weebly.com/ 
-A existing murmur/mumble server already exists: http://internetcw.weebly.com/ 
+
 
 ## Discord compatibility.
 Discord is not low latency, full QSK might not be possible.
