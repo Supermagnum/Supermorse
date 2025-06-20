@@ -1,6 +1,6 @@
 # Supermorse
 
-Progressive Morse Code Training with Arduino Key Integration
+Progressive Morse Code Training with a real Morse key by a Arduino.
 
 ![Supermorse Screenshot](http://0.0.0.0:8000/http___0_0_0_0_8000_-1750369349324.jpeg)
 
