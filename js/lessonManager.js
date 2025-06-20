@@ -16,7 +16,7 @@ const LESSON_MANAGER = (function() {
     // Settings
     const settings = {
         country: 'international',
-        wpm: 15,
+        wpm: 12,
         farnsworthSpacing: true,
         masteryThreshold: 0.9, // 90% accuracy required for mastery
         sessionDuration: 30 * 60 * 1000, // 30 minutes in milliseconds
