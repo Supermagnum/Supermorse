@@ -1,215 +1,583 @@
-// Morse Decoder with Adaptive Timing and Debounce
+/**
+ * morse_decoder.ino
+ * Arduino firmware for decoding Morse code from a physical key
+ * and sending the decoded characters to the browser via Serial
+ */
 
-const int STRAIGHT_KEY_PIN = 2;
-const int PADDLE_DIT_PIN = 3;
-const int PADDLE_DAH_PIN = 4;
+// Pin definitions
+const int STRAIGHT_KEY_PIN = 2;  // Connect straight key to this pin (use internal pull-up)
+const int PADDLE_DOT_PIN = 2;    // Connect paddle dot contact to this pin
+const int PADDLE_DASH_PIN = 3;   // Connect paddle dash contact to this pin
 
-// Default thresholds
-unsigned long DIT_THRESHOLD = 200;
-unsigned long DAH_THRESHOLD = 600;
+// Key mode definitions
+enum KeyMode {
+  STRAIGHT_KEY,     // Traditional straight key
+  PADDLE_SINGLE,    // Paddle used as a single lever
+  PADDLE_IAMBIC_A,  // Paddle used in iambic mode A (Curtis A - true implementation)
+  PADDLE_IAMBIC_B   // Paddle used in iambic mode B
+};
 
-const unsigned long INTER_CHAR_TIMEOUT = 1000; // ms
-const unsigned long DEBOUNCE_DELAY = 20; // ms
+// Current key mode
+KeyMode currentKeyMode = STRAIGHT_KEY;
 
-// Adaptive timing
-bool adaptiveTimingEnabled = false;
-unsigned long adaptiveDitAvg = DIT_THRESHOLD;
-unsigned long adaptiveDahAvg = DAH_THRESHOLD;
-const float adaptiveWeight = 0.2;  // smoothing factor
+// Timing constants (in milliseconds)
+const unsigned long DIT_THRESHOLD = 150;      // Maximum duration for a dit
+const unsigned long DAH_THRESHOLD = 450;      // Maximum duration for a dah
+const unsigned long ELEMENT_THRESHOLD = 200;  // Maximum time between elements within a character
+const unsigned long CHAR_THRESHOLD = 600;     // Maximum time between characters
+const unsigned long WORD_THRESHOLD = 1400;    // Maximum time between words
 
-// Straight key debounce
-unsigned long keyDownTime = 0, keyUpTime = 0;
-bool keyWasDown = false;
-bool lastStraightKeyState = HIGH;
-unsigned long lastStraightDebounceTime = 0;
+// Debounce constants
+const unsigned long DEBOUNCE_DELAY = 20;      // Debounce delay in milliseconds
 
-// Paddle debounce
-bool lastDitState = HIGH, lastDahState = HIGH;
-unsigned long lastDitDebounceTime = 0, lastDahDebounceTime = 0;
+// Morse code mapping
+const char* MORSE_TABLE[] = {
+  ".-",      // A
+  "-...",    // B
+  "-.-.",    // C
+  "-..",     // D
+  ".",       // E
+  "..-.",    // F
+  "--.",     // G
+  "....",    // H
+  "..",      // I
+  ".---",    // J
+  "-.-",     // K
+  ".-..",    // L
+  "--",      // M
+  "-.",      // N
+  "---",     // O
+  ".--.",    // P
+  "--.-",    // Q
+  ".-.",     // R
+  "...",     // S
+  "-",       // T
+  "..-",     // U
+  "...-",    // V
+  ".--",     // W
+  "-..-",    // X
+  "-.--",    // Y
+  "--..",    // Z
+  "-----",   // 0
+  ".----",   // 1
+  "..---",   // 2
+  "...--",   // 3
+  "....-",   // 4
+  ".....",   // 5
+  "-....",   // 6
+  "--...",   // 7
+  "---..",   // 8
+  "----."    // 9
+};
 
-// Iambic state
-bool ditLatch = false, dahLatch = false;
-bool lastDitPressed = false, lastDahPressed = false;
+// Regional characters
+const char* REGIONAL_MORSE[] = {
+  // Nordic characters
+  ".-.-",    // Æ/Ä - Nordic AE
+  "---.",    // Ø/Ö - Nordic OE
+  ".--.-",   // Å - Nordic AA
+  
+  // Icelandic/Faroese characters
+  "..-.",    // Ð - Eth (same as F)
+  ".--.",    // Þ - Thorn
+  
+  // German characters
+  "..--",    // Ü - German UE
+  "...--..", // ß - German SS
+  
+  // French characters
+  "..-..",   // É - French E acute
+  ".-..-",   // È - French E grave
+  "-.-..",   // Ç - French C cedilla
+  ".--.-",   // À - French A grave (same as Å)
+  
+  // Spanish characters
+  "--.--",   // Ñ - Spanish N tilde
+  ".--.-",   // Á - Spanish A acute (same as Å)
+  "..",      // Í - Spanish I acute (same as I)
+  "---",     // Ó - Spanish O acute (same as O)
+  
+  // Other European characters
+  "-.-...",  // Italian Ç
+  "...-...", // Polish Ś
+  "--..-.",  // Polish Ź
+  "--..-"    // Polish Ż/Czech Ž
+};
+
+// Regional character mapping (index in REGIONAL_MORSE array to ASCII representation)
+const char REGIONAL_CHARS[] = {
+  'Æ', 'Ø', 'Å', 'Ð', 'Þ', 'Ü', 'ß', 'É', 'È', 'Ç', 'À', 'Ñ', 'Á', 'Í', 'Ó', 'Ç', 'Ś', 'Ź', 'Ž'
+};
+
+// Prosigns
+const char* PROSIGNS[] = {
+  ".-.-.",   // AR (End of message)
+  "...-.-",  // SK (End of contact)
+  "-...-",   // BT (Break/new paragraph)
+  "-.--."    // KN (Go ahead, specific station)
+};
+
+// Punctuation and special characters
+const char* SPECIAL_MORSE[] = {
+  ".-.-.-",  // .
+  "--..--",  // ,
+  "..--..",  // ?
+  "-.-.--",  // !
+  "-..-.",   // /
+  "-.--.",   // (
+  "-.--.-",  // )
+  ".-...",   // &
+  "---...",  // :
+  "-.-.-.",  // ;
+  "-...-",   // =
+  ".-.-.",   // +
+  "-....-",  // -
+  "..--.-",  // _
+  ".-..-.",  // "
+  "...-..-", // $
+  ".--.-."   // @
+};
+
+// State variables
+unsigned long keyDownTime = 0;
+unsigned long keyUpTime = 0;
 unsigned long lastElementTime = 0;
-
-// Morse decoding
 String currentMorseSequence = "";
+bool keyWasDown = false;
 
-// Hardcoded mode: 0 = Straight Key, 1 = Single Paddle, 2 = Iambic A, 3 = Iambic B
-const int mode = 0;
+// Debounce variables for pin 2 (straight key / paddle dot)
+bool lastPin2State = HIGH;
+bool debouncedPin2State = HIGH;
+unsigned long lastPin2DebounceTime = 0;
+
+// Debounce variables for pin 3 (paddle dash)
+bool lastPin3State = HIGH;
+bool debouncedPin3State = HIGH;
+unsigned long lastPin3DebounceTime = 0;
+
+// Iambic keyer state
+bool dotMemory = false;
+bool dashMemory = false;
+bool iambicState = false;
+unsigned long iambicTimer = 0;
+char currentIambicElement = '\0';  // Current element being sent ('.', '-', or '\0')
+bool elementComplete = false;      // Flag to track if the current element is complete
+bool squeezeReleased = false;      // Flag to track if the squeeze was released after element completion
+unsigned long elementCompleteTime = 0; // Time when the current element completed
 
 void setup() {
-  pinMode(STRAIGHT_KEY_PIN, INPUT_PULLUP);
-  pinMode(PADDLE_DIT_PIN, INPUT_PULLUP);
-  pinMode(PADDLE_DAH_PIN, INPUT_PULLUP);
-
+  // Initialize serial communication
   Serial.begin(9600);
-  Serial.println("Morse Decoder Ready.");
+  
+  // Set up pins with internal pull-up resistors
+  pinMode(STRAIGHT_KEY_PIN, INPUT_PULLUP);
+  pinMode(PADDLE_DOT_PIN, INPUT_PULLUP);
+  pinMode(PADDLE_DASH_PIN, INPUT_PULLUP);
+  
+  // Wait for serial connection to be established
+  while (!Serial) {
+    ; // Wait for serial port to connect
+  }
+  
+  Serial.println("Morse Decoder Ready");
 }
 
 void loop() {
-  handleSerialCommands();
-
-  switch (mode) {
-    case 0: handleStraightKey(); break;
-    case 1: handleSinglePaddle(); break;
-    case 2: handleIambic(true); break;
-    case 3: handleIambic(false); break;
+  // Update debounced pin states
+  updateDebouncedInputs();
+  
+  // Check for commands from serial
+  checkSerialCommands();
+  
+  // Handle key input based on current mode
+  switch (currentKeyMode) {
+    case STRAIGHT_KEY:
+      handleStraightKey();
+      break;
+    case PADDLE_SINGLE:
+      handleSinglePaddle();
+      break;
+    case PADDLE_IAMBIC_A:
+      handleIambicPaddleModeA();
+      break;
+    case PADDLE_IAMBIC_B:
+      handleIambicPaddleModeB();
+      break;
   }
-
-  if (currentMorseSequence.length() > 0 && millis() - lastElementTime > INTER_CHAR_TIMEOUT) {
-    decodeMorse(currentMorseSequence);
+  
+  // Check for character completion (if key has been up for longer than CHAR_THRESHOLD)
+  if (currentMorseSequence.length() > 0 && 
+      (millis() - lastElementTime > CHAR_THRESHOLD)) {
+    
+    // Try to decode the Morse sequence
+    char decodedChar = decodeMorse(currentMorseSequence);
+    
+    if (decodedChar != '\0') {
+      Serial.print(decodedChar);
+    }
+    
+    // Reset for next character
     currentMorseSequence = "";
+    
+    // Check for word space
+    if (millis() - lastElementTime > WORD_THRESHOLD) {
+      Serial.print(" ");  // Add space between words
+    }
   }
 }
 
+/**
+ * Update debounced input states for both pins
+ */
+void updateDebouncedInputs() {
+  // Debounce pin 2 (straight key / paddle dot)
+  bool pin2Reading = digitalRead(PADDLE_DOT_PIN);
+  
+  if (pin2Reading != lastPin2State) {
+    lastPin2DebounceTime = millis();
+  }
+  
+  if ((millis() - lastPin2DebounceTime) > DEBOUNCE_DELAY) {
+    if (pin2Reading != debouncedPin2State) {
+      debouncedPin2State = pin2Reading;
+    }
+  }
+  
+  lastPin2State = pin2Reading;
+  
+  // Debounce pin 3 (paddle dash) - only if we're in a dual paddle mode
+  if (currentKeyMode == PADDLE_IAMBIC_A || currentKeyMode == PADDLE_IAMBIC_B) {
+    bool pin3Reading = digitalRead(PADDLE_DASH_PIN);
+    
+    if (pin3Reading != lastPin3State) {
+      lastPin3DebounceTime = millis();
+    }
+    
+    if ((millis() - lastPin3DebounceTime) > DEBOUNCE_DELAY) {
+      if (pin3Reading != debouncedPin3State) {
+        debouncedPin3State = pin3Reading;
+      }
+    }
+    
+    lastPin3State = pin3Reading;
+  }
+}
+
+/**
+ * Check for commands from the serial port
+ */
+void checkSerialCommands() {
+  if (Serial.available() > 0) {
+    char cmd = Serial.read();
+    
+    // Process command
+    switch (cmd) {
+      case 'S': // Straight key mode
+        currentKeyMode = STRAIGHT_KEY;
+        Serial.println("MODE:STRAIGHT");
+        break;
+      case 'P': // Single paddle mode
+        currentKeyMode = PADDLE_SINGLE;
+        Serial.println("MODE:PADDLE_SINGLE");
+        break;
+      case 'A': // Iambic paddle mode A (Curtis A)
+        currentKeyMode = PADDLE_IAMBIC_A;
+        Serial.println("MODE:PADDLE_IAMBIC_A");
+        break;
+      case 'B': // Iambic paddle mode B
+        currentKeyMode = PADDLE_IAMBIC_B;
+        Serial.println("MODE:PADDLE_IAMBIC_B");
+        break;
+    }
+  }
+}
+
+/**
+ * Handle straight key input
+ */
 void handleStraightKey() {
-  bool reading = digitalRead(STRAIGHT_KEY_PIN);
-
-  if (reading != lastStraightKeyState) {
-    lastStraightDebounceTime = millis();
+  // Use debounced state of pin 2 (LOW when pressed, HIGH when released)
+  bool keyIsDown = debouncedPin2State == LOW;
+  
+  // Key press detected
+  if (keyIsDown && !keyWasDown) {
+    keyDownTime = millis();
+    keyWasDown = true;
   }
-
-  if ((millis() - lastStraightDebounceTime) > DEBOUNCE_DELAY) {
-    if (reading == LOW && !keyWasDown) {
-      keyDownTime = millis();
-      keyWasDown = true;
+  
+  // Key release detected
+  if (!keyIsDown && keyWasDown) {
+    keyUpTime = millis();
+    unsigned long pressDuration = keyUpTime - keyDownTime;
+    
+    // Determine if it's a dit or dah
+    if (pressDuration <= DIT_THRESHOLD) {
+      currentMorseSequence += ".";
+      Serial.print(".");  // Debug output
+    } else if (pressDuration <= DAH_THRESHOLD) {
+      currentMorseSequence += "-";
+      Serial.print("-");  // Debug output
     }
-
-    if (reading == HIGH && keyWasDown) {
-      keyUpTime = millis();
-      unsigned long duration = keyUpTime - keyDownTime;
-
-      updateAdaptiveThresholds(duration);
-
-      if (duration <= DIT_THRESHOLD) currentMorseSequence += ".";
-      else if (duration <= DAH_THRESHOLD) currentMorseSequence += "-";
-
-      Serial.print(currentMorseSequence.charAt(currentMorseSequence.length() - 1));
-      lastElementTime = keyUpTime;
-      keyWasDown = false;
-    }
+    
+    lastElementTime = keyUpTime;
+    keyWasDown = false;
   }
-
-  lastStraightKeyState = reading;
 }
 
+/**
+ * Handle single paddle input (one lever for dots or dashes)
+ */
 void handleSinglePaddle() {
-  bool dit = debounceRead(PADDLE_DIT_PIN, lastDitState, lastDitDebounceTime);
-  bool dah = debounceRead(PADDLE_DAH_PIN, lastDahState, lastDahDebounceTime);
-
-  if (dit) {
-    updateAdaptiveThresholds(DIT_THRESHOLD);
-    currentMorseSequence += ".";
-    Serial.print(".");
-    delay(DIT_THRESHOLD);
-    lastElementTime = millis();
+  // Use debounced state of pin 2 (LOW when pressed, HIGH when released)
+  bool dotIsDown = debouncedPin2State == LOW;
+  
+  // Key press detected
+  if (dotIsDown && !keyWasDown) {
+    keyDownTime = millis();
+    keyWasDown = true;
   }
-  if (dah) {
-    updateAdaptiveThresholds(DAH_THRESHOLD);
-    currentMorseSequence += "-";
-    Serial.print("-");
-    delay(DAH_THRESHOLD);
-    lastElementTime = millis();
-  }
-}
-
-void handleIambic(bool isA) {
-  bool dit = debounceRead(PADDLE_DIT_PIN, lastDitState, lastDitDebounceTime);
-  bool dah = debounceRead(PADDLE_DAH_PIN, lastDahState, lastDahDebounceTime);
-
-  if (dit && !lastDitPressed) ditLatch = true;
-  if (dah && !lastDahPressed) dahLatch = true;
-
-  lastDitPressed = dit;
-  lastDahPressed = dah;
-
-  if (ditLatch) {
-    sendElement('.');
-    ditLatch = false;
-    if (!isA && dah) dahLatch = true;
-  } else if (dahLatch) {
-    sendElement('-');
-    dahLatch = false;
-    if (!isA && dit) ditLatch = true;
+  
+  // Key release detected
+  if (!dotIsDown && keyWasDown) {
+    keyUpTime = millis();
+    unsigned long pressDuration = keyUpTime - keyDownTime;
+    
+    // Determine if it's a dit or dah
+    if (pressDuration <= DIT_THRESHOLD) {
+      currentMorseSequence += ".";
+      Serial.print(".");  // Debug output
+    } else if (pressDuration <= DAH_THRESHOLD) {
+      currentMorseSequence += "-";
+      Serial.print("-");  // Debug output
+    }
+    
+    lastElementTime = keyUpTime;
+    keyWasDown = false;
   }
 }
 
-void sendElement(char symbol) {
-  currentMorseSequence += symbol;
-  Serial.print(symbol);
-  delay(symbol == '.' ? DIT_THRESHOLD : DAH_THRESHOLD);
-  lastElementTime = millis();
-}
-
-bool debounceRead(int pin, bool &lastState, unsigned long &lastDebounceTime) {
-  bool reading = digitalRead(pin);
-  if (reading != lastState) lastDebounceTime = millis();
-  if ((millis() - lastDebounceTime) > DEBOUNCE_DELAY) {
-    lastState = reading;
-    return reading == LOW;
+/**
+ * Handle iambic paddle input in Mode A (Curtis A - true implementation)
+ * In Mode A, if you release the paddles after the final element is sent but before
+ * the next element begins, no additional elements are sent.
+ */
+void handleIambicPaddleModeA() {
+  // Use debounced states for both paddles
+  bool dotPressed = debouncedPin2State == LOW;
+  bool dashPressed = debouncedPin3State == LOW;
+  
+  // Check if squeeze was released
+  if (!dotPressed && !dashPressed && (dotMemory || dashMemory)) {
+    squeezeReleased = true;
   }
-  return false;
-}
-
-void updateAdaptiveThresholds(unsigned long inputDuration) {
-  if (!adaptiveTimingEnabled) return;
-
-  if (inputDuration <= 300) {
-    adaptiveDitAvg = (1.0 - adaptiveWeight) * adaptiveDitAvg + adaptiveWeight * inputDuration;
-    DIT_THRESHOLD = adaptiveDitAvg;
-  } else if (inputDuration < 1000) {
-    adaptiveDahAvg = (1.0 - adaptiveWeight) * adaptiveDahAvg + adaptiveWeight * inputDuration;
-    DAH_THRESHOLD = adaptiveDahAvg;
-  }
-
-  if (DIT_THRESHOLD < 50) DIT_THRESHOLD = 50;
-  if (DAH_THRESHOLD < DIT_THRESHOLD + 100) DAH_THRESHOLD = DIT_THRESHOLD + 100;
-}
-
-void handleSerialCommands() {
-  if (Serial.available()) {
-    String cmd = Serial.readStringUntil('\n');
-    cmd.trim();
-
-    if (cmd.equalsIgnoreCase("ADAPTIVE ON")) {
-      adaptiveTimingEnabled = true;
-      Serial.println("Adaptive timing ENABLED.");
-    } else if (cmd.equalsIgnoreCase("ADAPTIVE OFF")) {
-      adaptiveTimingEnabled = false;
-      Serial.println("Adaptive timing DISABLED.");
-    } else {
-      Serial.println("Unknown command.");
+  
+  // If we're not currently sending an element
+  if (currentIambicElement == '\0') {
+    // Check if we have an element in memory to send
+    if (dotMemory) {
+      // Send a dot
+      currentMorseSequence += ".";
+      Serial.print(".");  // Debug output
+      currentIambicElement = '.';
+      iambicTimer = millis() + DIT_THRESHOLD;  // Set timer for dot duration
+      elementComplete = false;
+      dotMemory = false;  // Clear dot memory
+    } else if (dashMemory) {
+      // Send a dash
+      currentMorseSequence += "-";
+      Serial.print("-");  // Debug output
+      currentIambicElement = '-';
+      iambicTimer = millis() + DAH_THRESHOLD;  // Set timer for dash duration
+      elementComplete = false;
+      dashMemory = false;  // Clear dash memory
+    } else if (dotPressed) {
+      // Start sending a dot
+      currentMorseSequence += ".";
+      Serial.print(".");  // Debug output
+      currentIambicElement = '.';
+      iambicTimer = millis() + DIT_THRESHOLD;  // Set timer for dot duration
+      elementComplete = false;
+    } else if (dashPressed) {
+      // Start sending a dash
+      currentMorseSequence += "-";
+      Serial.print("-");  // Debug output
+      currentIambicElement = '-';
+      iambicTimer = millis() + DAH_THRESHOLD;  // Set timer for dash duration
+      elementComplete = false;
+    }
+    
+    if (currentIambicElement != '\0') {
+      lastElementTime = millis();
     }
   }
+  
+  // Check if current element is complete
+  if (currentIambicElement != '\0' && millis() >= iambicTimer) {
+    // Element is complete
+    elementComplete = true;
+    elementCompleteTime = millis();
+    currentIambicElement = '\0';
+    
+    // In Mode A, we only set up the next element if the paddles are still pressed
+    // This is the key difference from Mode B
+    if (dotPressed || dashPressed) {
+      // If both paddles are pressed, alternate between dot and dash
+      if (dotPressed && dashPressed) {
+        if (currentMorseSequence.endsWith(".")) {
+          dashMemory = true;
+        } else {
+          dotMemory = true;
+        }
+      } else if (dotPressed) {
+        dotMemory = true;
+      } else if (dashPressed) {
+        dashMemory = true;
+      }
+    }
+    
+    // If the squeeze was released after the element completed, we don't queue another element
+    // This is the key feature of the Curtis A chip that modern implementations get wrong
+    if (squeezeReleased) {
+      dotMemory = false;
+      dashMemory = false;
+      squeezeReleased = false;
+    }
+  }
+  
+  // If no paddles are pressed and no elements are in memory, reset
+  if (!dotPressed && !dashPressed && !dotMemory && !dashMemory && currentIambicElement == '\0') {
+    // End of keying
+    keyWasDown = false;
+    squeezeReleased = false;
+  }
 }
 
-void decodeMorse(String morseCode) {
-  if (morseCode == ".-") Serial.println(" A");
-  else if (morseCode == "-...") Serial.println(" B");
-  else if (morseCode == "-.-.") Serial.println(" C");
-  else if (morseCode == "-..") Serial.println(" D");
-  else if (morseCode == ".") Serial.println(" E");
-  else if (morseCode == "..-.") Serial.println(" F");
-  else if (morseCode == "--.") Serial.println(" G");
-  else if (morseCode == "....") Serial.println(" H");
-  else if (morseCode == "..") Serial.println(" I");
-  else if (morseCode == ".---") Serial.println(" J");
-  else if (morseCode == "-.-") Serial.println(" K");
-  else if (morseCode == ".-..") Serial.println(" L");
-  else if (morseCode == "--") Serial.println(" M");
-  else if (morseCode == "-.") Serial.println(" N");
-  else if (morseCode == "---") Serial.println(" O");
-  else if (morseCode == ".--.") Serial.println(" P");
-  else if (morseCode == "--.-") Serial.println(" Q");
-  else if (morseCode == ".-.") Serial.println(" R");
-  else if (morseCode == "...") Serial.println(" S");
-  else if (morseCode == "-") Serial.println(" T");
-  else if (morseCode == "..-") Serial.println(" U");
-  else if (morseCode == "...-") Serial.println(" V");
-  else if (morseCode == ".--") Serial.println(" W");
-  else if (morseCode == "-..-") Serial.println(" X");
-  else if (morseCode == "-.--") Serial.println(" Y");
-  else if (morseCode == "--..") Serial.println(" Z");
-  else Serial.println(" ?");
+/**
+ * Handle iambic paddle input in Mode B
+ * In Mode B, if you release the paddles, the keyer completes the element in progress
+ * and then sends one more alternating element.
+ */
+void handleIambicPaddleModeB() {
+  // Use debounced states for both paddles
+  bool dotPressed = debouncedPin2State == LOW;
+  bool dashPressed = debouncedPin3State == LOW;
+  
+  // Store paddle states in memory for proper iambic behavior
+  if (dotPressed) dotMemory = true;
+  if (dashPressed) dashMemory = true;
+  
+  // If we're not currently sending an element
+  if (currentIambicElement == '\0') {
+    // Check if we have an element in memory to send
+    if (dotMemory) {
+      // Send a dot
+      currentMorseSequence += ".";
+      Serial.print(".");  // Debug output
+      currentIambicElement = '.';
+      iambicTimer = millis() + DIT_THRESHOLD;  // Set timer for dot duration
+      dotMemory = false;  // Clear dot memory
+    } else if (dashMemory) {
+      // Send a dash
+      currentMorseSequence += "-";
+      Serial.print("-");  // Debug output
+      currentIambicElement = '-';
+      iambicTimer = millis() + DAH_THRESHOLD;  // Set timer for dash duration
+      dashMemory = false;  // Clear dash memory
+    }
+    
+    if (currentIambicElement != '\0') {
+      lastElementTime = millis();
+    }
+  }
+  
+  // Check if current element is complete
+  if (currentIambicElement != '\0' && millis() >= iambicTimer) {
+    // Element is complete
+    currentIambicElement = '\0';
+    
+    // In Mode B, we always check for the next element to send
+    // If both paddles are pressed, alternate between dot and dash
+    if (dotPressed && dashPressed) {
+      if (currentMorseSequence.endsWith(".")) {
+        dashMemory = true;
+        dotMemory = false;
+      } else {
+        dotMemory = true;
+        dashMemory = false;
+      }
+    } else if (dotPressed) {
+      dotMemory = true;
+    } else if (dashPressed) {
+      dashMemory = true;
+    }
+    
+    // Mode B: If paddles are released but we just finished an element,
+    // we'll send one more alternating element
+    if (!dotPressed && !dashPressed && !dotMemory && !dashMemory) {
+      if (currentMorseSequence.endsWith(".")) {
+        dashMemory = true;  // Queue one more dash
+      } else if (currentMorseSequence.endsWith("-")) {
+        dotMemory = true;   // Queue one more dot
+      }
+    }
+  }
+  
+  // If no paddles are pressed and no elements are in memory, reset
+  if (!dotPressed && !dashPressed && !dotMemory && !dashMemory && currentIambicElement == '\0') {
+    // End of keying
+    keyWasDown = false;
+  }
+}
+
+/**
+ * Decode a Morse code sequence to a character
+ * @param morseSequence The Morse code sequence to decode
+ * @return The decoded character or '\0' if not recognized
+ */
+char decodeMorse(String morseSequence) {
+  // Check standard letters and numbers (A-Z, 0-9)
+  for (int i = 0; i < 36; i++) {
+    if (morseSequence.equals(MORSE_TABLE[i])) {
+      if (i < 26) {
+        return 'A' + i;  // A-Z
+      } else {
+        return '0' + (i - 26);  // 0-9
+      }
+    }
+  }
+  
+  // Check regional characters - use safe bounds checking
+  int regionalArraySize = min(sizeof(REGIONAL_CHARS), sizeof(REGIONAL_MORSE) / sizeof(REGIONAL_MORSE[0]));
+  for (int i = 0; i < regionalArraySize; i++) {
+    if (morseSequence.equals(REGIONAL_MORSE[i])) {
+      return REGIONAL_CHARS[i];
+    }
+  }
+  
+  // Check prosigns (return as special codes)
+  if (morseSequence.equals(PROSIGNS[0])) return '<';  // AR
+  if (morseSequence.equals(PROSIGNS[1])) return '>';  // SK
+  if (morseSequence.equals(PROSIGNS[2])) return '=';  // BT
+  if (morseSequence.equals(PROSIGNS[3])) return '~';  // KN
+  
+  // Check punctuation and special characters
+  const char specialChars[] = {'.', ',', '?', '!', '/', '(', ')', '&', ':', ';', '=', '+', '-', '_', '"', '$', '@'};
+  for (int i = 0; i < 17; i++) {
+    if (morseSequence.equals(SPECIAL_MORSE[i])) {
+      return specialChars[i];
+    }
+  }
+  
+  // Not recognized
+  return '\0';
+}
+
+/**
+ * Adaptive timing calibration (optional enhancement)
+ * This function could be used to adapt to the user's keying speed
+ */
+void calibrateTiming() {
+  // This would measure the user's average dit and dah durations
+  // and adjust the thresholds accordingly
+  // Not implemented in this basic version
 }
