@@ -228,8 +228,7 @@ The Arduino firmware (`morse_decoder.ino`) handles:
 
 - Reading the Morse key input (press/release timings)
 - Calculating element durations (dots, dashes, spaces)
-- Mapping valid sequences to characters
-- Sending decoded characters over serial to the browser
+-  Sending decoded dots, dashes,spaces to the browser using serial.
 
 The firmware supports:
 - International Morse code (A-Z, 0-9)
