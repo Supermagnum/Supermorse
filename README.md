@@ -43,7 +43,7 @@ Supermorse implements this method while adding modern features like regional cha
 ## Requirements
 
 - Web browser with Web Serial API support (Chrome, Opera or Edge recommended)
-- Arduino board (Uno, Nano, or similar)
+- Arduino board (Uno, Nano, or similar,cheaper and simpler than a Morserino.) I higly reccomend Seeeduino XIAO, its so small that it can be build directly into a morse keys base!
 - Morse key (straight key or paddle)
 - USB cable to connect Arduino to computer
 
